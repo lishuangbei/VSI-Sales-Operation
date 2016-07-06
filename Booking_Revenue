@@ -1,0 +1,324 @@
+Sub Flash_report_Actual_booking()
+'
+' Flash_report_Actual_booking Macro
+'
+
+'
+    Sheets("Flash").Select
+    Sheets.Add
+    ActiveCell.FormulaR1C1 = "China"
+    Range("A2").Select
+    ActiveCell.FormulaR1C1 = "Taiwan"
+    Range("A3").Select
+    ActiveCell.FormulaR1C1 = "North America"
+    Range("A4").Select
+    ActiveCell.FormulaR1C1 = "Japan"
+    Range("A5").Select
+    ActiveCell.FormulaR1C1 = "Europe"
+    Range("A6").Select
+    ActiveCell.FormulaR1C1 = "Korea"
+    Range("A7").Select
+    ActiveCell.FormulaR1C1 = "WW"
+    Range("B1").Select
+    ActiveCell.FormulaR1C1 = _
+        "=SUMIF(Flash!R15C3:R21C3,Sheet1!RC[-1],Flash!R15C26:R21C26)"
+    Range("B1").Select
+    Selection.AutoFill Destination:=Range("B1:B7"), Type:=xlFillDefault
+    Range("B1:B7").Select
+    Range("E6").Select
+End Sub
+
+
+Function find_target_cell(ws As Variant, start_row As Variant, number_of_rows As Variant, column As Variant, the_value As Variant) As Integer
+
+Dim target_row As Long
+
+end_row = start_row + number_of_rows - 1
+For Each cell In Sheets(ws).Range(column & start_row & ":" & column & end_row)
+    If cell.Value = the_value Then target_row = cell.Row: Exit For
+Next cell
+
+find_target_cell = target_row
+
+End Function
+
+Sub Copy_revenue_to_chart() 'the main project working on, copy region/category numbers to chart
+    'needing function find_target_cell()
+Dim ws1
+Dim ws2
+Dim start_row As Integer
+Dim number_of_rows As Integer
+ws1 = "Revenue Chart by Region"
+ws2 = "Revenue Chart by Category"
+Dim copy_from_row
+Dim work_sheet
+Dim copy_to_row
+Dim i As Integer
+Dim target_row As Integer
+Dim current_week As String
+current_week = InputBox("Enter current week")
+
+
+copy_from_row = Array(25, 32, 39, 46, 53, 60, 67, 74, 92, 102, 112, 122, 74)
+work_sheet = Array(ws1, ws1, ws1, ws1, ws1, ws1, ws1, ws1, ws2, ws2, ws2, ws2, ws2)
+copy_to_row = Array(3, 21, 39, 57, 75, 93, 111, 129, 3, 21, 39, 57, 75)
+number_of_rows = 13
+
+For i = 0 To 12
+
+    Worksheets("Revenue").Range("B" & copy_from_row(i) & ":D" & copy_from_row(i)).Copy 'B_:D_
+     'Cells() always refers to active sheets... if worksheets is not qualifying, this would fail
+    target_row = find_target_cell(work_sheet(i), copy_to_row(i), number_of_rows, "A", current_week)
+            'after this sub-call, the blank cell row number will be assigned to target_row
+    Worksheets(work_sheet(i)).Cells(target_row, 2).PasteSpecial (-4163)
+Next
+End Sub
+
+Sub BR_Cleaning_Chart_numbers()
+'
+' BR_Cleaning_Chart_numbers Macro
+'
+
+'
+    Range("B3:D15").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=9
+    Range("B20:D32").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=15
+    Range("B38:D50").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=21
+    Range("B56:D68").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=15
+    Range("B74:D86").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=24
+    Range("B92:D104").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=27
+    Range("B126:D138").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=-135
+    Range("B3").Select
+    Sheets("Revenue Chart by Category").Select
+    Range("B2:D14").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=9
+    Range("B19:D31").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=15
+    Range("B36:D48").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=24
+    Range("B56:D68").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=15
+    Range("B75:D87").Select
+    Selection.ClearContents
+    ActiveWindow.SmallScroll Down:=-90
+    Range("B2").Select
+End Sub
+
+Sub Copy_numbers_to_last_week()
+'
+' Copy_numbers_to_last_week Macro
+'
+
+'
+    Range("B3:F11").Select
+    Selection.Copy
+    ActiveWindow.SmallScroll Down:=36
+    Range("B48").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    ActiveWindow.SmallScroll Down:=-30
+    Range("B16:F20").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    ActiveWindow.SmallScroll Down:=42
+    Range("B60").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Revenue").Select
+    ActiveWindow.SmallScroll Down:=-21
+    ActiveWindow.ScrollColumn = 14
+    ActiveWindow.ScrollColumn = 13
+    ActiveWindow.ScrollColumn = 12
+    ActiveWindow.ScrollColumn = 9
+    ActiveWindow.ScrollColumn = 2
+    Rows("5:9").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Comp to last week").Select
+    ActiveWindow.SmallScroll Down:=-6
+    Range("A22").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Revenue").Select
+    Rows("14:18").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Comp to last week").Select
+    Range("A31").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Range("A21").Select
+    Sheets("Revenue").Select
+    Range("A4").Select
+End Sub
+
+
+Sub rev_table()
+'
+' rev_table Macro
+'
+
+'
+    ActiveWindow.SmallScroll Down:=-6
+    Range("Z106:Z109").Select
+    Selection.Copy
+    Sheets("Flash").Select
+    Sheets.Add
+    Range("B4").Select
+    Range("B4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=24
+    Sheets("Sheet1").Select
+    Range("B3").Select
+    Application.CutCopyMode = False
+    ActiveCell.FormulaR1C1 = "CN"
+    Range("C3").Select
+    ActiveCell.FormulaR1C1 = "TW"
+    Range("D3").Select
+    ActiveCell.FormulaR1C1 = "NA"
+    Range("E3").Select
+    ActiveCell.FormulaR1C1 = "JP"
+    Range("F3").Select
+    ActiveCell.FormulaR1C1 = "EU"
+    Range("G3").Select
+    ActiveCell.FormulaR1C1 = "KR"
+    Range("A4").Select
+    ActiveCell.FormulaR1C1 = "ROY"
+    Range("B4").Select
+    ActiveCell.FormulaR1C1 = "4.23875"
+    Range("A5").Select
+    ActiveCell.FormulaR1C1 = "LIC"
+    Range("A6").Select
+    ActiveCell.FormulaR1C1 = "NRE"
+    Range("A7").Select
+    ActiveCell.FormulaR1C1 = "TK"
+    Range("A8").Select
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=-15
+    Range("Z106:Z109").Select
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Range("C4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=12
+    Range("Z126:Z129").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Range("D4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=15
+    Range("Z139:Z142").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Range("B4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=9
+    Range("Z146:Z149").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=18
+    Range("Z166:Z169").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Range("E4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=21
+    Range("Z186:Z189").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Range("F4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Flash").Select
+    ActiveWindow.SmallScroll Down:=12
+    Range("Z206:Z209").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Sheet1").Select
+    Range("G4").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+End Sub
+
+Sub Rev_fcst_backlog_table()
+'
+' backlog_table Macro
+'
+
+'
+    Sheets("By Region By Catagory").Select
+    Sheets.Add
+    Range("B1").Select
+    ActiveCell.FormulaR1C1 = "CN"
+    Range("C1").Select
+    ActiveCell.FormulaR1C1 = "TW"
+    Range("D1").Select
+    ActiveCell.FormulaR1C1 = "NA"
+    Range("E1").Select
+    ActiveCell.FormulaR1C1 = "JP"
+    Range("F1").Select
+    ActiveCell.FormulaR1C1 = "EU"
+    Range("G1").Select
+    ActiveCell.FormulaR1C1 = "KR"
+    Range("H1").Select
+    ActiveCell.FormulaR1C1 = "WW"
+    Range("A2").Select
+    ActiveCell.FormulaR1C1 = "Royalty"
+    Range("A3").Select
+    ActiveCell.FormulaR1C1 = "License"
+    Range("A4").Select
+    ActiveCell.FormulaR1C1 = "NRE"
+    Range("A5").Select
+    ActiveCell.FormulaR1C1 = "Turnkey"
+    Range("B2").Select
+    ActiveCell.FormulaR1C1 = _
+        "=SUMIFS('By Region By Catagory'!R6C6:R112C6,'By Region By Catagory'!R6C2:R112C2,RC1,'By Region By Catagory'!R6C1:R112C1,R1C,'By Region By Catagory'!R6C3:R112C3,R1C1)/1000"
+    Range("A1").Select
+    ActiveCell.FormulaR1C1 = "open"
+    Range("B2").Select
+    Selection.AutoFill Destination:=Range("B2:B5"), Type:=xlFillDefault
+    Range("B2:B5").Select
+    Selection.AutoFill Destination:=Range("B2:H5"), Type:=xlFillDefault
+    Range("B2:G5").Select
+
+End Sub
+
+
+
+
+
