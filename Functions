@@ -1,0 +1,127 @@
+Option Explicit
+
+'*
+'* Properties that will be collected for each found file
+'*
+Type FoundFileInfo
+    sPath As String
+    sName As String
+End Type
+
+Function FindFiles(ByVal sPath As String, _
+    ByRef recFoundFiles() As FoundFileInfo, _
+    ByRef iFilesFound As Integer, _
+    Optional ByVal sFileSpec As String = "*.*", _
+    Optional ByVal blIncludeSubFolders As Boolean = False) As Boolean
+'
+' FindFiles
+' ---------
+' Finds all files matching the specified file spec starting from the specified path and
+' searches sub-folders if required.
+'
+' Parameters
+' ----------
+' sPath (String): Start-up folder, e.g. "C:\Users\Username\Documents"
+'
+' recFoundFiles (User-defined data type): a user-defined dynamic array to store the path
+' and name of found files. The dimension of this array is (1 To nnn), where nnn is the
+' number of found files. The elements of this array are:
+'   .sPath (String) = File path
+'   .sName (String) = File name
+'
+' iFilesFound (Integer): Number of files found.
+'
+' sFileSpec (String): Optional parameter with default value = "*.*"
+'
+' blIncludeSubFolders (Boolean): Optional parameter with default value = False
+'   (which means sub-folders will not be searched)
+'
+' Return values
+' -------------
+' True: One or more files found, therefore
+'   recFoundFiles = Array of paths and names of all found files
+'   iFilesFound = Number of found files
+' False: No files found, therefore
+'   iFilesFound = 0
+'
+' Using the function (sample code)
+' --------------------------------
+'    Dim iFilesNum As Integer
+'    Dim iCount As Integer
+'    Dim recMyFiles() As FoundFileInfo
+'    Dim blFilesFound As Boolean
+'
+'    blFilesFound = FindFiles("C:\Users\MBA\Desktop", _
+'        recMyFiles, iFilesNum, "*.txt?", True)
+'    If blFilesFound Then
+'        For iCount = 1 To iFilesNum
+'            With recMyFiles(iCount)
+'                MsgBox "Path:" & vbTab & .sPath & _
+'                    vbNewLine & "Name:" & vbTab & .sName, _
+'                    vbInformation, "Found Files"
+'            End With
+'        Next
+'    Else
+'        MsgBox "No file(s) found matching the specified file spec.", _
+'            vbInformation, "File(s) not Found"
+'    End If
+'
+'
+' Constructive comments and Reporting of bugs would be appreciated.
+'
+
+    Dim iCount As Integer           '* Multipurpose counter
+    Dim sFileName As String         '* Found file name
+    '*
+    '* FileSystem objects
+    Dim oFileSystem As Object, _
+        oParentFolder As Object, _
+        oFolder As Object, _
+        oFile As Object
+
+    Set oFileSystem = CreateObject("Scripting.FileSystemObject")
+    On Error Resume Next
+    Set oParentFolder = oFileSystem.GetFolder(sPath)
+    If oParentFolder Is Nothing Then
+        FindFiles = False
+        On Error GoTo 0
+        Set oParentFolder = Nothing
+        Set oFileSystem = Nothing
+        Exit Function
+    End If
+    sPath = IIf(Right(sPath, 1) = "\", sPath, sPath & "\")
+    '*
+    '* Find files
+    sFileName = Dir(sPath & sFileSpec, vbNormal)
+    If sFileName <> "" Then
+        For Each oFile In oParentFolder.Files
+            If LCase(oFile.Name) Like LCase(sFileSpec) Then
+                iCount = UBound(recFoundFiles)
+                iCount = iCount + 1
+                ReDim Preserve recFoundFiles(1 To iCount)
+                With recFoundFiles(iCount)
+                    .sPath = sPath
+                    .sName = oFile.Name
+                End With
+            End If
+        Next oFile
+        Set oFile = Nothing         '* Although it is nothing
+    End If
+    If blIncludeSubFolders Then
+        '*
+        '* Select next sub-forbers
+        For Each oFolder In oParentFolder.SubFolders
+            FindFiles oFolder.path, recFoundFiles, iFilesFound, sFileSpec, blIncludeSubFolders
+        Next
+    End If
+    FindFiles = UBound(recFoundFiles) > 0
+    iFilesFound = UBound(recFoundFiles)
+    On Error GoTo 0
+    '*
+    '* Clean-up
+    Set oFolder = Nothing           '* Although it is nothing
+    Set oParentFolder = Nothing
+    Set oFileSystem = Nothing
+
+End Function
+
