@@ -1,0 +1,413 @@
+Sub Copy_regional_QECD()
+
+Dim week As String
+Dim quarter As String
+Call get_week_quarter(week, quarter)
+
+
+
+'Below codes are used to get regional files names.
+
+Dim fPath As String
+Dim iFilesNum As Integer
+Dim blFilesFound As Boolean
+Dim recMyFiles() As FoundFileInfo
+Dim recMyFilesBlank() As FoundFileInfo
+Dim wbnames(6) As Variant
+Dim nspec() As Variant
+nspec = Array("CH", "TW", "EU", "Copy", "JP", "Korea") ''' change this to adjust searching keyword
+
+fPath = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\2016\Q2\test\"
+
+'define region properties here
+'Get Region file name,
+
+For i = 0 To 5
+    recMyFiles() = recMyFilesBlank() ' reset recMyFiles, making sure it has only 1 element, otherwise it's going to add more elements into that array and cause error
+    blFilesFound = FindFiles(fPath, _
+    recMyFiles(), iFilesNum, "*" & nspec(i) & "*", False)
+    If blFilesFound Then
+        wbnames(i) = recMyFiles(1).sName
+    End If
+Next i
+' At this point, we have an array - wbnames(6) of each region's file name.
+
+
+Call delete_consolidated_old_cases(week, quarter) 'Open two consolidated files here, and delete regional cases
+Call headline_update(week, quarter) 'Update the title, week, blahblah things...
+Call BBB(week, quarter) 'Update the bookings, billings and backlogs
+Call update_last_quarter(week, quarter) 'Update last quarter numbers
+
+'Open regional files and copy
+Dim wsnames() As Variant
+wsnames = Array("China", "Taiwan", "Europe", "North America", "Japan", "Korea")
+For i = 0 To 5
+    If Not IsEmpty(wbnames(i)) Then
+        Application.DisplayAlerts = False
+        Workbooks.Open Filename:=fPath & wbnames(i), UpdateLinks:=False
+        Workbooks(wbnames(i)).Activate
+        Call Copy_single_regional_QECD(wbnames(i), wsnames(i), week, quarter)
+        Call update_action_items(wbnames(i), wsnames(i), week, quarter)    'Copy action items()
+        Call save_as_and_close(week, quarter, wbnames(i)) 'save regional files to specific folders
+    End If
+Next i
+
+Call copy_numbers_to_weekrow(week, quarter)
+
+
+'Here save QECD and regional files to specific folder and delete regional files
+End Sub
+Sub save_and_close_WW(week, quarter)
+Dim fullversion As Variant
+Dim ongoing As Variant
+Dim next_week As Variant
+Dim answer As Variant
+Dim root_folder As String
+Dim fullversion_nextweek As String
+Dim ongoing_nextweek As String
+
+
+next_week = Right(week, 2) + 1
+
+If next_week = 14 Or next_week = 15 Then
+    answer = InputBox("Final week? y/n")
+    If answer = "y" Then
+        next_week = "ww02"
+    ElseIf answer <> "n" Then
+        answer = InputBox("Enter a valid answer. y/n")
+    End If
+End If
+
+fullversion = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx"
+fullversion_nextweek = "WW Weekly Sales Call - " & quarter & " " & LCase(next_week) & " - Consolidated_PRE CALL full version.xlsx"
+ongoing = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx"
+ongoing_nextweek = "WW Weekly Sales Call - " & quarter & " " & LCase(next_week) & " - Regional Ongoing Deals.xlsx"
+
+root_folder = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\test"
+
+Workbooks(fullversion).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & fullversion
+Workbooks(fullversion).Name = fullversion_nextweek
+Workbooks(fullversion).Close
+
+End Sub
+Sub copy_numbers_to_weekrow(week, quarter)
+Dim i As Integer
+Dim wsnames() As Variant
+Dim fullversion As Variant
+Dim end_row As Integer
+Dim week_row As Integer
+
+fullversion = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version"
+wsnames = Array("China", "Taiwan", "Europe", "North America", "Japan", "Korea")
+
+'copy regional sheets
+Workbooks(fullversion).Activate
+For i = 0 To 5
+    end_row = find_target_cell(wsnames(i), 6, 200, "A", "Total " & wsnames(i)) 'find the "total region" row, defined as end_row
+    Worksheets(wsnames(i)).Range("J" & end_row & ":AE" & end_row).Copy
+    week_row = find_target_cell(wsnames(i), end_row, 15, "A", UCase(week))
+    Worksheets(wsnames(i)).Range("J" & week_row & ":AE" & week_row).PasteSpecial (-4163)
+Next i
+
+'update "Countdown Summary"
+week_row = find_target_cell("Countdown Summary", 14, 15, "A", UCase(week))
+Worksheets("Countdown Summary").Range("I14:AD14").Copy
+Worksheets("Countdown Summary").Range("I" & week_row & ":AD" & week_row).PasteSpecial (-4163)
+
+'update "WW Weekly Sales Call SUMMARY"
+week_row = find_target_cell("WW Weekly Sales Call SUMMARY", 56, 15, "A", UCase(week))
+Worksheets("WW Weekly Sales Call SUMMARY").Range("B55:D55").Copy
+Worksheets("WW Weekly Sales Call SUMMARY").Range("B" & week_row & ":D" & week_row).PasteSpecial (-4163)
+
+
+End Sub
+
+
+'=========================================================================================
+'=========================================================================================
+'=========================================================================================
+
+Sub Copy_single_regional_QECD(wb As Variant, ws As Variant, week As Variant, quarter As Variant)
+Dim start_row As Integer
+Dim last_row As Integer
+Dim end_row As Integer
+Dim number_of_rows As Integer
+Dim region_name As String
+
+last_row = 200 'making last_row=200 is because sometimes there's no empty cell between start_row and end_row, which makes last_row 0 in the next few steps
+start_row = 6
+'Some regional row 7 are empty and some are not... it's a long story. check delete_consolidated_old_cases()
+    
+
+end_row = find_target_cell(ws, start_row, last_row, "A", "Total " & ws) 'find the "total region" row, defined as end_row
+last_row = find_target_cell(ws, start_row, end_row - start_row, "A", "") 'find a blank cell row
+last_row = WorksheetFunction.Min(last_row, end_row) 'choose the smaller one of blank cell or total cell, say it's end_row
+
+Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals").Worksheets(ws).Rows("8:" & last_row - 1).Insert Shift:=xlDown
+Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version").Worksheets(ws).Rows("8:" & last_row - 1).Insert Shift:=xlDown
+Workbooks(wb).Worksheets(ws).Rows(start_row + 1 & ":" & last_row - 1).Copy 'copy between start_row and last_row
+Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals").Worksheets(ws).Rows("7:" & last_row - 1).PasteSpecial 'copy between start_row and last_row
+Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version").Worksheets(ws).Rows("7:" & last_row - 1).PasteSpecial
+
+End Sub
+
+'==========================================================================================================
+'==========================================================================================================
+'==========================================================================================================
+Sub delete_consolidated_old_cases(week, quarter)
+Dim fPath As Variant
+fPath = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\2016\Q2\test\"
+
+'Open two consolidated files here, and delete regional cases
+Dim wsnames() As Variant
+Dim end_row As Integer
+Dim i As Integer
+Dim wb As Workbook
+wsnames = Array("China", "Taiwan", "Europe", "North America", "Japan", "Korea")
+Workbooks.Open Filename:=fPath & "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx", UpdateLinks:=False
+
+For i = 0 To 5
+    end_row = find_target_cell(wsnames(i), 6, 200, "A", "Total " & wsnames(i))
+    ActiveWorkbook.Worksheets(wsnames(i)).Rows(7).ClearContents
+    ActiveWorkbook.Worksheets(wsnames(i)).Rows(8 & ":" & end_row - 2).Delete
+Next i
+
+Workbooks.Open Filename:=fPath & "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx", UpdateLinks:=False
+
+For i = 0 To 5
+    end_row = find_target_cell(wsnames(i), 6, 200, "A", "Total " & wsnames(i))
+    ActiveWorkbook.Worksheets(wsnames(i)).Rows(7).ClearContents
+    ActiveWorkbook.Worksheets(wsnames(i)).Rows(8 & ":" & end_row - 2).Delete
+Next i
+End Sub
+
+'==========================================================================================================
+'==========================================================================================================
+'==========================================================================================================
+Sub get_week_quarter(week, quarter)
+Dim weektime As String
+weektime = InputBox("Enter current week. 5-digit-number. QYYWW")
+week = "ww" & Right(weektime, 2)
+quarter = "Q" & Left(weektime, 3)
+End Sub
+
+
+Sub headline_update(week, quarter)
+Dim last_quarter As Variant
+last_quarter = "Q" & Mid(quarter, 2, 1) - 1
+If last_quarter = "Q0" Then
+    last_quarter = "Q4"
+End If
+With Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version")
+    With Worksheets("WW Weekly Sales Call SUMMARY")
+        .Range("G3").Value = Left(quarter, 2) & " 20" & Right(quarter, 2) & " - Work week " & Right(week, 2)
+        .Range("B4").Value = Date
+        .Range("B16").Value = last_quarter & "-" & Right(quarter, 2)
+        .Range("C16").Value = Left(quarter, 2) & "-" & Right(quarter, 2)
+        .Range("B17").Value = week
+    End With
+End With
+With Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals")
+    With .Worksheets("Summary")
+    .Range("G3").Value = Left(quarter, 2) & " 20" & Right(quarter, 2) & " - Work week " & Right(week, 2)
+    .Range("B4").Value = Date
+    End With
+End With
+End Sub
+
+Sub save_as_and_close2(week, quarter, wbname)
+Dim root_folder As String
+root_folder = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\"
+Workbooks(wbname).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & wbname
+Workbooks(wbname).Close
+
+End Sub
+
+Sub save_as_and_close(week, quarter, wbname)
+
+
+Dim root_folder As String
+root_folder = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\test\"
+Workbooks(wbname).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & wbname
+Workbooks(wbname).Close
+End Sub
+
+Sub update_action_items(wb, ws, week, quarter)
+Dim actsheet_name As Variant
+Dim full_version As Variant
+Dim ongoing_deals As Variant
+If ws = "North America" Then
+    actsheet_name = "US"
+Else
+    actsheet_name = ws
+End If
+full_version = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version"
+ongoing_deals = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals"
+
+Workbooks(wb).Worksheets(actsheet_name & " Actions ").Columns("B:K").Copy 'Don't copy column A because it contains a defined name and pops up messages.
+Workbooks(full_version).Worksheets(actsheet_name & " Actions ").Columns("B:K").PasteSpecial
+Workbooks(ongoing_deals).Worksheets(actsheet_name & " Actions ").Columns("B:K").PasteSpecial
+
+End Sub
+
+
+Sub BBB(week, quarter)
+'
+' Flash_Report__to_QECD Macro
+'
+Dim flashreport As Variant
+Dim fullversion As Variant
+fullversion = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version"
+flashreport = "FlashReport " & quarter & " " & UCase(week) & " to Shuangbei.xlsx"
+
+Workbooks.Open Filename:="C:\OneDrive\Documents\Employment\Sales Operation\QECD\2016\Q2\test\" & flashreport, UpdateLinks:=False
+
+' Titles
+    Sheets.Add
+    Range("A2").Select
+    ActiveCell.FormulaR1C1 = "DSIP"
+    Range("A3").Select
+    ActiveCell.FormulaR1C1 = "NRE"
+    Range("A4").Select
+    ActiveCell.FormulaR1C1 = "Turnkey"
+    Range("A6").Select
+    ActiveCell.FormulaR1C1 = "Total CSD"
+    Range("A8").Select
+    ActiveCell.FormulaR1C1 = "GPU"
+    Range("A9").Select
+    ActiveCell.FormulaR1C1 = "Video"
+    Range("A10").Select
+    ActiveCell.FormulaR1C1 = "ZSP"
+    Range("A11").Select
+    ActiveCell.FormulaR1C1 = "VIP"
+    Range("A13").Select
+    ActiveCell.FormulaR1C1 = "Total IPD"
+    Range("A15").Select
+    ActiveCell.FormulaR1C1 = "China"
+    Range("A16").Select
+    ActiveCell.FormulaR1C1 = "Europe"
+    Range("A17").Select
+    ActiveCell.FormulaR1C1 = "Japan"
+    Range("A18").Select
+    ActiveCell.FormulaR1C1 = "Korea"
+    Range("A19").Select
+    ActiveCell.FormulaR1C1 = "North America"
+    Range("A20").Select
+    ActiveCell.FormulaR1C1 = "Taiwan"
+    Range("A21").Select
+    ActiveCell.FormulaR1C1 = "Worldwide"
+    Range("A22").Select
+    ActiveCell.FormulaR1C1 = "Total by Region"
+    Range("C1").Select
+    ActiveCell.FormulaR1C1 = "Booking"
+    Range("E1").Select
+    ActiveCell.FormulaR1C1 = "Billing"
+    
+' Bookings
+  ' CSD
+    Range("C2").Select
+    ActiveCell.FormulaR1C1 = "=CSD!R[6]C[23]"
+    Range("C2").Select
+    Selection.AutoFill Destination:=Range("C2:C6"), Type:=xlFillDefault
+  ' IPD
+    Range("C8").Select
+    ActiveCell.FormulaR1C1 = "=IPD!RC[23]"
+    Range("C8").Select
+    Selection.AutoFill Destination:=Range("C8:C13"), Type:=xlFillDefault
+  ' Delete blank contents
+    Range("C5").Select
+    Selection.ClearContents
+    Range("C12").Select
+    Selection.ClearContents
+  ' Regions
+    Range("C15").Select
+    ActiveCell.FormulaR1C1 = "=Flash!RC[23]"
+    Range("C15").Select
+    Selection.AutoFill Destination:=Range("C15:C22"), Type:=xlFillDefault
+    
+' Billings
+  ' CSD
+    Range("E2").Select
+    ActiveCell.FormulaR1C1 = "=CSD!R[28]C[21]"
+    Range("E2").Select
+    Selection.AutoFill Destination:=Range("E2:E6"), Type:=xlFillDefault
+  ' IPD
+    Range("E8").Select
+    ActiveCell.FormulaR1C1 = "=IPD!R[23]C[21]"
+    Range("E8").Select
+    Selection.AutoFill Destination:=Range("E8:E13"), Type:=xlFillDefault
+  ' Delete blank contents
+    Range("E5").Select
+    Selection.ClearContents
+    Range("E12").Select
+    Selection.ClearContents
+  ' Regions
+    Range("E15").Select
+    ActiveCell.FormulaR1C1 = "=Flash!R[23]C[21]"
+    Range("E15").Select
+    Selection.AutoFill Destination:=Range("E15:E22"), Type:=xlFillDefault
+    Range("G1").Select
+    
+' Backlogs
+  ' CSD
+    ActiveCell.FormulaR1C1 = "Backlog"
+    Range("G2").Select
+    ActiveCell.FormulaR1C1 = "=CSD!R[28]C[21]"
+    Range("G2").Select
+    Selection.AutoFill Destination:=Range("G2:G6"), Type:=xlFillDefault
+  ' IPD
+    Range("G8").Select
+    ActiveCell.FormulaR1C1 = "=IPD!R[23]C[21]"
+    Range("G8").Select
+    Selection.AutoFill Destination:=Range("G8:G13"), Type:=xlFillDefault
+  ' Clear blank contents
+    Range("G12").Select
+    Selection.ClearContents
+    Range("G5").Select
+    Selection.ClearContents
+  ' Regions
+    Range("G15").Select
+    ActiveCell.FormulaR1C1 = "=Flash!R[23]C[21]"
+    Range("G15").Select
+    Selection.AutoFill Destination:=Range("G15:G22"), Type:=xlFillDefault
+    Range("C2").Select
+    
+Workbooks(flashreport).Worksheets("Sheet1").Range("C2:C22").Copy
+Workbooks(fullversion).Worksheets("WW Weekly Sales Call SUMMARY").Range("C19:C38").PasteSpecial (-4163) 'copy bookings
+
+Workbooks(flashreport).Worksheets("Sheet1").Range("E2:E22").Copy
+Workbooks(fullversion).Worksheets("WW Weekly Sales Call SUMMARY").Range("G19:G38").PasteSpecial (-4163) 'Copy Billings
+
+Workbooks(flashreport).Worksheets("Sheet1").Range("G2:G22").Copy
+Workbooks(fullversion).Worksheets("WW Weekly Sales Call SUMMARY").Range("J19:J38").PasteSpecial (-4163) 'Copy Backlogs
+
+Workbooks(flashreport).Close savechanges:=False
+
+End Sub
+Sub update_last_quarter(week, quarter)
+Dim file_path, year, last_quarter, last_QECD As Variant
+
+last_quarter = "Q" & Right(Left(quarter, 2), 1) - 1
+year = Right(quarter, 2)
+If last_quarter = "Q0" Then
+    last_quarter = "Q4"
+    year = year - 1
+End If
+last_quarter = last_quarter & year 'Find last_quarter(Qxxx), year(xx)
+
+file_path = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\" & "20" & year & "\" & Left(last_quarter, 2) & "\" & week & "\"
+last_QECD = "WW Weekly Sales Call - " & last_quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx"
+
+If Dir(file_path & last_QECD) <> "" Then
+    Workbooks.Open Filename:=file_path & last_QECD, UpdateLinks:=False
+    Workbooks(last_QECD).Worksheets("WW Weekly Sales Call SUMMARY").Range("C19:C38").Copy
+    Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx").Worksheets("WW Weekly Sales Call SUMMARY").Range("B19:B38").PasteSpecial (-4163)
+    Workbooks(last_QECD).Worksheets("WW Weekly Sales Call SUMMARY").Range("G19:G38").Copy
+    Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx").Worksheets("WW Weekly Sales Call SUMMARY").Range("F19:F38").PasteSpecial (-4163)
+    Workbooks(last_QECD).Close savechanges:=False
+End If
+
+
+End Sub
+
+
