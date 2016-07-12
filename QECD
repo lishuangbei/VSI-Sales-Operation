@@ -49,15 +49,17 @@ For i = 0 To 5
         Call Copy_single_regional_QECD(wbnames(i), wsnames(i), week, quarter)
         Call update_action_items(wbnames(i), wsnames(i), week, quarter)    'Copy action items()
         Call save_as_and_close(week, quarter, wbnames(i)) 'save regional files to specific folders
+        Kill (fPath & wbnames(i)) 'Delete regional files from working folder
     End If
 Next i
 
 Call copy_numbers_to_weekrow(week, quarter)
+'Delete old files
+Call save_and_close_WW(week, quarter, fPath)
 
 
-'Here save QECD and regional files to specific folder and delete regional files
 End Sub
-Sub save_and_close_WW(week, quarter)
+Sub save_and_close_WW(week, quarter, fPath)
 Dim fullversion As Variant
 Dim ongoing As Variant
 Dim next_week As Variant
@@ -65,7 +67,7 @@ Dim answer As Variant
 Dim root_folder As String
 Dim fullversion_nextweek As String
 Dim ongoing_nextweek As String
-
+Dim next_quarter As Variant
 
 next_week = Right(week, 2) + 1
 
@@ -78,17 +80,38 @@ If next_week = 14 Or next_week = 15 Then
     End If
 End If
 
-fullversion = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx"
-fullversion_nextweek = "WW Weekly Sales Call - " & quarter & " " & LCase(next_week) & " - Consolidated_PRE CALL full version.xlsx"
-ongoing = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx"
-ongoing_nextweek = "WW Weekly Sales Call - " & quarter & " " & LCase(next_week) & " - Regional Ongoing Deals.xlsx"
+If answer = "y" Then
+    next_quarter = "Q" & Mid(quarter, 2, 1) + 1 & Right(quarter, 2)
+    If Left(next_quarter, 2) = "Q5" Then
+        next_quarter = "Q1" & Right(quarter, 2) + 1
+    End If
+    
+End If
 
-root_folder = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\test"
+fullversion = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx"
+fullversion_nextweek = "WW Weekly Sales Call - " & next_quarter & " " & LCase(next_week) & " - Consolidated_PRE CALL full version.xlsx"
+ongoing = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx"
+ongoing_nextweek = "WW Weekly Sales Call - " & next_quarter & " " & LCase(next_week) & " - Regional Ongoing Deals.xlsx"
+
+root_folder = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\test\"
 
 Workbooks(fullversion).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & fullversion
-Workbooks(fullversion).Name = fullversion_nextweek
-Workbooks(fullversion).Close
+Workbooks(fullversion).SaveAs Filename:=fPath & fullversion_nextweek
+Workbooks(fullversion_nextweek).Close
+Kill (fPath & fullversion)
 
+Workbooks(ongoing).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & ongoing
+Workbooks(ongoing).SaveAs Filename:=fPath & ongoing_nextweek
+Workbooks(ongoing_nextweek).Close
+Kill (fPath & ongoing)
+
+End Sub
+Sub test()
+Dim week As Variant
+Dim quarter As Variant
+week = "ww14"
+quarter = "Q416"
+Call save_and_close_WW(week, quarter)
 End Sub
 Sub copy_numbers_to_weekrow(week, quarter)
 Dim i As Integer
@@ -409,123 +432,5 @@ End If
 
 
 End Sub
-
-Sub Flash_Report__to_QECD()
-'
-' Flash_Report__to_QECD Macro
-'
-
-' Titles
-    Sheets("Flash").Select
-    Sheets.Add
-    Range("A2").Select
-    ActiveCell.FormulaR1C1 = "DSIP"
-    Range("A3").Select
-    ActiveCell.FormulaR1C1 = "NRE"
-    Range("A4").Select
-    ActiveCell.FormulaR1C1 = "Turnkey"
-    Range("A6").Select
-    ActiveCell.FormulaR1C1 = "Total CSD"
-    Range("A8").Select
-    ActiveCell.FormulaR1C1 = "GPU"
-    Range("A9").Select
-    ActiveCell.FormulaR1C1 = "Video"
-    Range("A10").Select
-    ActiveCell.FormulaR1C1 = "ZSP"
-    Range("A11").Select
-    ActiveCell.FormulaR1C1 = "VIP"
-    Range("A13").Select
-    ActiveCell.FormulaR1C1 = "Total IPD"
-    Range("A15").Select
-    ActiveCell.FormulaR1C1 = "China"
-    Range("A16").Select
-    ActiveCell.FormulaR1C1 = "Europe"
-    Range("A17").Select
-    ActiveCell.FormulaR1C1 = "Japan"
-    Range("A18").Select
-    ActiveCell.FormulaR1C1 = "Korea"
-    Range("A19").Select
-    ActiveCell.FormulaR1C1 = "North America"
-    Range("A20").Select
-    ActiveCell.FormulaR1C1 = "Taiwan"
-    Range("A21").Select
-    ActiveCell.FormulaR1C1 = "Worldwide"
-    Range("A22").Select
-    ActiveCell.FormulaR1C1 = "Total by Region"
-    Range("C1").Select
-    ActiveCell.FormulaR1C1 = "Booking"
-    Range("E1").Select
-    ActiveCell.FormulaR1C1 = "Billing"
-    
-' Bookings
-  ' CSD
-    Range("C2").Select
-    ActiveCell.FormulaR1C1 = "=CSD!R[6]C[23]"
-    Range("C2").Select
-    Selection.AutoFill Destination:=Range("C2:C6"), Type:=xlFillDefault
-  ' IPD
-    Range("C8").Select
-    ActiveCell.FormulaR1C1 = "=IPD!RC[23]"
-    Range("C8").Select
-    Selection.AutoFill Destination:=Range("C8:C13"), Type:=xlFillDefault
-  ' Delete blank contents
-    Range("C5").Select
-    Selection.ClearContents
-    Range("C12").Select
-    Selection.ClearContents
-  ' Regions
-    Range("C15").Select
-    ActiveCell.FormulaR1C1 = "=Flash!RC[23]"
-    Range("C15").Select
-    Selection.AutoFill Destination:=Range("C15:C22"), Type:=xlFillDefault
-    
-' Billings
-  ' CSD
-    Range("E2").Select
-    ActiveCell.FormulaR1C1 = "=CSD!R[28]C[21]"
-    Range("E2").Select
-    Selection.AutoFill Destination:=Range("E2:E6"), Type:=xlFillDefault
-  ' IPD
-    Range("E8").Select
-    ActiveCell.FormulaR1C1 = "=IPD!R[23]C[21]"
-    Range("E8").Select
-    Selection.AutoFill Destination:=Range("E8:E13"), Type:=xlFillDefault
-  ' Delete blank contents
-    Range("E5").Select
-    Selection.ClearContents
-    Range("E12").Select
-    Selection.ClearContents
-  ' Regions
-    Range("E15").Select
-    ActiveCell.FormulaR1C1 = "=Flash!R[23]C[21]"
-    Range("E15").Select
-    Selection.AutoFill Destination:=Range("E15:E22"), Type:=xlFillDefault
-    Range("G1").Select
-    
-' Backlogs
-  ' CSD
-    ActiveCell.FormulaR1C1 = "Backlog"
-    Range("G2").Select
-    ActiveCell.FormulaR1C1 = "=CSD!R[28]C[21]"
-    Range("G2").Select
-    Selection.AutoFill Destination:=Range("G2:G6"), Type:=xlFillDefault
-  ' IPD
-    Range("G8").Select
-    ActiveCell.FormulaR1C1 = "=IPD!R[23]C[21]"
-    Range("G8").Select
-    Selection.AutoFill Destination:=Range("G8:G13"), Type:=xlFillDefault
-  ' Clear blank contents
-    Range("G12").Select
-    Selection.ClearContents
-    Range("G5").Select
-    Selection.ClearContents
-  ' Regions
-    Range("G15").Select
-    ActiveCell.FormulaR1C1 = "=Flash!R[23]C[21]"
-    Range("G15").Select
-    Selection.AutoFill Destination:=Range("G15:G22"), Type:=xlFillDefault
-    Range("C2").Select
-End Sub
-
 
 
