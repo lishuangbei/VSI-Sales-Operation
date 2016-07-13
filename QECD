@@ -19,9 +19,8 @@ nspec = Array("CH", "TW", "EU", "Copy", "JP", "Korea") ''' change this to adjust
 
 fPath = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\2016\Q2\test\"
 
-'define region properties here
-'Get Region file name,
 
+'Get Region file name,
 For i = 0 To 5
     recMyFiles() = recMyFilesBlank() ' reset recMyFiles, making sure it has only 1 element, otherwise it's going to add more elements into that array and cause error
     blFilesFound = FindFiles(fPath, _
@@ -54,9 +53,9 @@ For i = 0 To 5
 Next i
 
 Call copy_numbers_to_weekrow(week, quarter)
-'Delete old files
+'Delete old consolidated files from working folder
+Call select_A1(week, quarter)
 Call save_and_close_WW(week, quarter, fPath)
-
 
 End Sub
 Sub save_and_close_WW(week, quarter, fPath)
@@ -70,8 +69,13 @@ Dim ongoing_nextweek As String
 Dim next_quarter As Variant
 
 next_week = Right(week, 2) + 1
+If next_week < 10 Then
+    next_week = "ww0" & next_week
+Else
+    next_week = "ww" & next_week
+End If
 
-If next_week = 14 Or next_week = 15 Then
+If next_week = "ww14" Or next_week = "ww15" Then
     answer = InputBox("Final week? y/n")
     If answer = "y" Then
         next_week = "ww02"
@@ -79,7 +83,8 @@ If next_week = 14 Or next_week = 15 Then
         answer = InputBox("Enter a valid answer. y/n")
     End If
 End If
-
+    
+next_quarter = quarter
 If answer = "y" Then
     next_quarter = "Q" & Mid(quarter, 2, 1) + 1 & Right(quarter, 2)
     If Left(next_quarter, 2) = "Q5" Then
@@ -100,8 +105,8 @@ Workbooks(fullversion).SaveAs Filename:=fPath & fullversion_nextweek
 Workbooks(fullversion_nextweek).Close
 Kill (fPath & fullversion)
 
-Workbooks(ongoing).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & ongoing
-Workbooks(ongoing).SaveAs Filename:=fPath & ongoing_nextweek
+Workbooks(ongoing).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & ongoing 'Archive
+Workbooks(ongoing).SaveAs Filename:=fPath & ongoing_nextweek '
 Workbooks(ongoing_nextweek).Close
 Kill (fPath & ongoing)
 
@@ -433,4 +438,31 @@ End If
 
 End Sub
 
+Sub select_A1(week, quarter)
+Dim full, ongoing As String
+Dim i As Integer
+Dim ws As Worksheet
+
+full = "WW Weekly Sales Call - " & quarter & " " & week & " - Consolidated_PRE CALL full version.xlsx"
+ongoing = "WW Weekly Sales Call - " & quarter & " " & week & " - Regional Ongoing Deals.xlsx"
+
+Workbooks(ongoing).Activate
+For Each ws In Workbooks(ongoing).Worksheets
+    ws.Activate
+    Range("A1").Activate
+Next
+
+Worksheets("Summary").Activate
+Range("A1").Activate
+
+Workbooks(full).Activate
+For Each ws In Workbooks(full).Worksheets
+    ws.Activate
+    Range("A1").Activate
+Next
+
+Worksheets("WW Weekly Sales Call SUMMARY").Activate
+Range("A1").Activate
+
+End Sub
 
