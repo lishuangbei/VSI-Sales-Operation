@@ -19,9 +19,8 @@ nspec = Array("CH", "TW", "EU", "Copy", "JP", "Korea") ''' change this to adjust
 
 fPath = "C:\OneDrive\Documents\Employment\Sales Operation\QECD\2016\Q2\test\"
 
-'define region properties here
-'Get Region file name,
 
+'Get Region file name,
 For i = 0 To 5
     recMyFiles() = recMyFilesBlank() ' reset recMyFiles, making sure it has only 1 element, otherwise it's going to add more elements into that array and cause error
     blFilesFound = FindFiles(fPath, _
@@ -33,7 +32,10 @@ Next i
 ' At this point, we have an array - wbnames(6) of each region's file name.
 
 
-Call delete_consolidated_old_cases(week, quarter) 'Open two consolidated files here, and delete regional cases
+'Open two consolidated files here
+Workbooks.Open Filename:=fPath & "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx", UpdateLinks:=False
+Workbooks.Open Filename:=fPath & "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx", UpdateLinks:=False
+
 Call headline_update(week, quarter) 'Update the title, week, blahblah things...
 Call BBB(week, quarter) 'Update the bookings, billings and backlogs
 Call update_last_quarter(week, quarter) 'Update last quarter numbers
@@ -45,18 +47,21 @@ For i = 0 To 5
     If Not IsEmpty(wbnames(i)) Then
         Application.DisplayAlerts = False
         Workbooks.Open Filename:=fPath & wbnames(i), UpdateLinks:=False
+        Call delete_regional_cases(wsnames(i), week, quarter)
         Workbooks(wbnames(i)).Activate
         Call Copy_single_regional_QECD(wbnames(i), wsnames(i), week, quarter)
         Call update_action_items(wbnames(i), wsnames(i), week, quarter)    'Copy action items()
         Call save_as_and_close(week, quarter, wbnames(i)) 'save regional files to specific folders
         Kill (fPath & wbnames(i)) 'Delete regional files from working folder
+        Call region_submission_check(wsnames(i), week, quarter)
+        
     End If
 Next i
 
 Call copy_numbers_to_weekrow(week, quarter)
-'Delete old files
+'Delete old consolidated files from working folder
+Call select_A1(week, quarter)
 Call save_and_close_WW(week, quarter, fPath)
-
 
 End Sub
 Sub save_and_close_WW(week, quarter, fPath)
@@ -70,8 +75,13 @@ Dim ongoing_nextweek As String
 Dim next_quarter As Variant
 
 next_week = Right(week, 2) + 1
+If next_week < 10 Then
+    next_week = "ww0" & next_week
+Else
+    next_week = "ww" & next_week
+End If
 
-If next_week = 14 Or next_week = 15 Then
+If next_week = "ww14" Or next_week = "ww15" Then
     answer = InputBox("Final week? y/n")
     If answer = "y" Then
         next_week = "ww02"
@@ -79,7 +89,8 @@ If next_week = 14 Or next_week = 15 Then
         answer = InputBox("Enter a valid answer. y/n")
     End If
 End If
-
+    
+next_quarter = quarter
 If answer = "y" Then
     next_quarter = "Q" & Mid(quarter, 2, 1) + 1 & Right(quarter, 2)
     If Left(next_quarter, 2) = "Q5" Then
@@ -100,19 +111,13 @@ Workbooks(fullversion).SaveAs Filename:=fPath & fullversion_nextweek
 Workbooks(fullversion_nextweek).Close
 Kill (fPath & fullversion)
 
-Workbooks(ongoing).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & ongoing
-Workbooks(ongoing).SaveAs Filename:=fPath & ongoing_nextweek
+Workbooks(ongoing).SaveAs Filename:=root_folder & "20" & Right(quarter, 2) & "\" & Left(quarter, 2) & "\" & week & "\" & ongoing 'Archive
+Workbooks(ongoing).SaveAs Filename:=fPath & ongoing_nextweek '
 Workbooks(ongoing_nextweek).Close
 Kill (fPath & ongoing)
 
 End Sub
-Sub test()
-Dim week As Variant
-Dim quarter As Variant
-week = "ww14"
-quarter = "Q416"
-Call save_and_close_WW(week, quarter)
-End Sub
+
 Sub copy_numbers_to_weekrow(week, quarter)
 Dim i As Integer
 Dim wsnames() As Variant
@@ -127,9 +132,9 @@ wsnames = Array("China", "Taiwan", "Europe", "North America", "Japan", "Korea")
 Workbooks(fullversion).Activate
 For i = 0 To 5
     end_row = find_target_cell(wsnames(i), 6, 200, "A", "Total " & wsnames(i)) 'find the "total region" row, defined as end_row
-    Worksheets(wsnames(i)).Range("J" & end_row & ":AE" & end_row).Copy
+    Worksheets(wsnames(i)).Range("K" & end_row & ":AF" & end_row).Copy
     week_row = find_target_cell(wsnames(i), end_row, 15, "A", UCase(week))
-    Worksheets(wsnames(i)).Range("J" & week_row & ":AE" & week_row).PasteSpecial (-4163)
+    Worksheets(wsnames(i)).Range("K" & week_row & ":AF" & week_row).PasteSpecial (-4163)
 Next i
 
 'update "Countdown Summary"
@@ -187,23 +192,47 @@ Dim end_row As Integer
 Dim i As Integer
 Dim wb As Workbook
 wsnames = Array("China", "Taiwan", "Europe", "North America", "Japan", "Korea")
-Workbooks.Open Filename:=fPath & "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx", UpdateLinks:=False
+
 
 For i = 0 To 5
     end_row = find_target_cell(wsnames(i), 6, 200, "A", "Total " & wsnames(i))
-    ActiveWorkbook.Worksheets(wsnames(i)).Rows(7).ClearContents
-    ActiveWorkbook.Worksheets(wsnames(i)).Rows(8 & ":" & end_row - 2).Delete
+    If end_row > 9 Then
+        ActiveWorkbook.Worksheets(wsnames(i)).Rows(7).ClearContents
+        ActiveWorkbook.Worksheets(wsnames(i)).Rows(8 & ":" & end_row - 2).Delete
+    End If
 Next i
 
-Workbooks.Open Filename:=fPath & "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx", UpdateLinks:=False
 
 For i = 0 To 5
     end_row = find_target_cell(wsnames(i), 6, 200, "A", "Total " & wsnames(i))
-    ActiveWorkbook.Worksheets(wsnames(i)).Rows(7).ClearContents
-    ActiveWorkbook.Worksheets(wsnames(i)).Rows(8 & ":" & end_row - 2).Delete
+    If end_row > 9 Then
+        ActiveWorkbook.Worksheets(wsnames(i)).Rows(7).ClearContents
+        ActiveWorkbook.Worksheets(wsnames(i)).Rows(8 & ":" & end_row - 2).Delete
+    End If
 Next i
 End Sub
 
+Sub delete_regional_cases(ws, week, quarter)
+Dim fullversion, ongoing As Variant
+
+ongoing = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals.xlsx"
+fullversion = "WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx"
+
+Workbooks(fullversion).Activate
+end_row = find_target_cell(ws, 6, 200, "A", "Total " & ws)
+If end_row > 9 Then
+    ActiveWorkbook.Worksheets(ws).Rows(7).ClearContents
+    ActiveWorkbook.Worksheets(ws).Rows(8 & ":" & end_row - 2).Delete
+End If
+
+Workbooks(ongoing).Activate
+end_row = find_target_cell(ws, 6, 200, "A", "Total " & ws)
+If end_row > 9 Then
+    ActiveWorkbook.Worksheets(ws).Rows(7).ClearContents
+    ActiveWorkbook.Worksheets(ws).Rows(8 & ":" & end_row - 2).Delete
+End If
+
+End Sub
 '==========================================================================================================
 '==========================================================================================================
 '==========================================================================================================
@@ -429,6 +458,65 @@ If Dir(file_path & last_QECD) <> "" Then
     Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Consolidated_PRE CALL full version.xlsx").Worksheets("WW Weekly Sales Call SUMMARY").Range("F19:F38").PasteSpecial (-4163)
     Workbooks(last_QECD).Close savechanges:=False
 End If
+
+
+End Sub
+
+Sub select_A1(week, quarter)
+Dim full, ongoing As String
+Dim i As Integer
+Dim ws As Worksheet
+
+full = "WW Weekly Sales Call - " & quarter & " " & week & " - Consolidated_PRE CALL full version.xlsx"
+ongoing = "WW Weekly Sales Call - " & quarter & " " & week & " - Regional Ongoing Deals.xlsx"
+
+Workbooks(ongoing).Activate
+For Each ws In Workbooks(ongoing).Worksheets
+    ws.Activate
+    Range("A1").Activate
+Next
+
+Worksheets("Summary").Activate
+Range("A1").Activate
+
+Workbooks(full).Activate
+For Each ws In Workbooks(full).Worksheets
+    ws.Activate
+    Range("A1").Activate
+Next
+
+Worksheets("WW Weekly Sales Call SUMMARY").Activate
+Range("A1").Activate
+
+End Sub
+
+Sub region_submission_check(ws, week, quarter)
+Dim nrow As Variant
+Dim ncol As Variant
+Dim full, ongoing As Variant
+
+full = "WW Weekly Sales Call - " & quarter & " " & week & " - Consolidated_PRE CALL full version.xlsx"
+ongoing = "WW Weekly Sales Call - " & quarter & " " & week & " - Regional Ongoing Deals.xlsx"
+
+ncol = Right(week, 2) - 1
+'wsnames = Array("China", "Taiwan", "Europe", "North America", "Japan", "Korea")
+If ws = "China" Then
+    nrow = 1
+ElseIf ws = "Europe" Then
+    nrow = 2
+ElseIf ws = "Japan" Then
+    nrow = 3
+ElseIf ws = "North America" Then
+    nrow = 5
+ElseIf ws = "Korea" Then
+    nrow = 4
+ElseIf ws = "Taiwan" Then
+    nrow = 6
+End If
+
+Workbooks(ongoing).Worksheets("Summary").Range("R48").Copy
+Workbooks(ongoing).Worksheets("Summary").Cells(44 + nrow, 3 + ncol).PasteSpecial
+Workbooks(full).Worksheets("Countdown Summary").Cells(30 + nrow, 8 + ncol).PasteSpecial
 
 
 End Sub
