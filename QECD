@@ -168,7 +168,7 @@ start_row = 6
     
 
 end_row = find_target_cell(ws, start_row, last_row, "A", "Total " & ws) 'find the "total region" row, defined as end_row
-last_row = find_target_cell(ws, start_row, end_row - start_row, "A", "") 'find a blank cell row
+last_row = find_target_cell(ws, start_row, 200, "A", "") 'find a blank cell row
 last_row = WorksheetFunction.Min(last_row, end_row) 'choose the smaller one of blank cell or total cell, say it's end_row
 
 Workbooks("WW Weekly Sales Call - " & quarter & " " & LCase(week) & " - Regional Ongoing Deals").Worksheets(ws).Rows("8:" & last_row - 1).Insert Shift:=xlDown
