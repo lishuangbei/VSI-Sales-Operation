@@ -1,0 +1,56 @@
+
+Sub SendEmail(Ref, FirstName, LSource, PartNumber, strEmailTo)
+
+'Config
+fName = FirstName
+LeadSource = LSource
+    If LeadSource = "D&R" Then
+        LeadSource = "Design & Reuse"
+    ElseIf LeadSource = "ChipEstimate" Then
+        LeadSource = "ChipEstimate"
+    End If
+
+
+
+
+Set olApp = Outlook.Application
+Dim olNs As Outlook.NameSpace
+Set olNs = olApp.GetNamespace("MAPI")
+olNs.Logon
+Set olMai = olApp.CreateItem(olMailItem)
+olMai.To = strEmailTo
+olMai.CC = "Bill.Wang@verisilicon.com"
+'olMail.BCC = strEmailBCC
+olMai.Subject = "Thank you for browsing our IP portfolio. " & "Ref#" & Ref
+olMai.HTMLBody = "<BODY style=font-size:11pt;font-family:Calibri (Body)>" & _
+    "Hi " & fName & ",<p>" & _
+    "Thank you for Browsing our IP porfolio on " & LeadSource & " (" & PartNumber & "). " & _
+    "Please feel free to let us know if there are further questions and if you would like someone from out team to get in touch with you.<p>" & _
+    "Regards<br>" & _
+    "Shuangbei Li<br>" & _
+    "Sales Operation Assistant<br>" & _
+    "VeriSilicon, Inc.<br>" & _
+    "2150 Gold Street, Suite 200<br>" & _
+    "San Jose, CA, 95002<Body>"
+olMai.Send
+End Sub
+
+Sub Main()
+
+Dim xlApp As Object
+Set xlApp = GetObject(, "Excel.Application")
+
+Dim LG As String
+LG = "Lead Management Macro"
+
+Dim ws As Object
+Set ws = xlApp.Workbooks(LG).Worksheets("Sheet1")
+For i = 3 To 4
+    Ref = ws.Range("A" & i).Value
+    FirstName = ws.Range("I" & i).Value
+    LSource = ws.Range("B" & i).Value
+    PartNumber = ws.Range("D" & i).Value
+    strEmailTo = ws.Range("J" & i).Value
+    Call SendEmail(Ref, FirstName, LSource, PartNumber, strEmailTo)
+Next i
+End Sub
