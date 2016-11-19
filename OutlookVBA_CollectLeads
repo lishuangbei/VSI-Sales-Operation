@@ -1,0 +1,273 @@
+Sub Main()
+
+Dim olApp As Outlook.Application
+Dim objNS As Outlook.NameSpace
+Dim DefaultFolder As Outlook.MAPIFolder
+Dim MyFolder As Outlook.MAPIFolder
+Dim body As String
+Dim xlApp As Excel.Application
+
+Set olApp = Outlook.Application
+Set objNS = olApp.GetNamespace("MAPI")
+Set DefaultFolder = objNS.GetDefaultFolder(olFolderInbox)
+Set MyFolder = DefaultFolder.Folders("test").Folders("Input")
+
+Call Openexcel
+
+Count = 0
+For Each objItem In MyFolder.Items
+    If TypeName(objItem) = "MailItem" Then
+        Count = Count + 1
+    End If
+Next objItem 'Count first
+Dim i As Integer
+DRNumber = 0
+CENumber = 0
+For i = 1 To Count
+    MaiNum = Count + 1 - i
+    Set mai = MyFolder.Items(MaiNum)
+
+    If TypeName(mai) = "MailItem" Then
+        If mai.SenderEmailAddress = "support@design-reuse.com" Then
+            InfoList = DesignReuse(mai)
+            Call ToExcel(InfoList)
+            Call toDataBase(xlApp, "Lead Management Macro.xlsm")
+            mai.Move DefaultFolder.Folders("test").Folders("Output")
+            DRNumber = DRNumber + 1
+        ElseIf mai.SenderEmailAddress = "ipsupport@chipestimate.com" Then
+            InfoList = ChipEstimate(mai)
+            Call ToExcel(InfoList)
+            Call toDataBase(xlApp, "Lead Management Macro.xlsm")
+            mai.Move DefaultFolder.Folders("test").Folders("Output")
+            CENumber = CENumber + 1
+        End If
+    End If
+Next ' This IF loop archive each email and extract the info to Lead Generation table.
+
+
+Set mai = Nothing
+Set MyFolder = Nothing
+Set objItem = Nothing
+MsgBox "Finished " & DRNumber & " D&R emails and " & CENumber & " ChipEst emails." & " Totally " & DRNumber + CENumber & " Emails."
+End Sub
+
+Sub CountEmails()
+Dim olApp As Outlook.Application
+Dim objNS As Outlook.NameSpace
+Dim DefaultFolder As Outlook.MAPIFolder
+Dim MyFolder As Outlook.MAPIFolder
+Dim body As String
+Dim xlApp As Excel.Application
+
+Set olApp = Outlook.Application
+Set objNS = olApp.GetNamespace("MAPI")
+Set DefaultFolder = objNS.GetDefaultFolder(olFolderInbox)
+Set MyFolder = DefaultFolder.Folders("test").Folders("Input")
+Count = 0
+For Each objItem In MyFolder.Items
+    If TypeName(objItem) = "MailItem" Then
+        If objItem.Sender = "support@design-reuse.com" Then
+            Count = Count + 1
+        End If
+    End If
+Next objItem
+
+MsgBox Count
+Set mai = MyFolder.Items(Count)
+MsgBox TypeName(MyFolder.Items(Count))
+
+
+End Sub
+
+Function DesignReuse(mai)
+
+LeadSource = "D&R"
+LeadClass = ""
+Product = LookingFor("Product", mai, 5)
+    PartNumber = Left(Product, InStr(Product, "-") - 2)
+    ProductDescription = Mid(Product, InStr(Product, "-") + 2, Len(Product) - InStr(Product, "-") - 1)
+InquiryDate = DateValue(mai.ReceivedTime)
+Company = LookingFor("Company", mai)
+LastName = LookingFor("Last Name", mai)
+FirstName = LookingFor("First Name", mai)
+EmailAddress = LookingFor("Email: ", mai, 0)
+Occupation = LookingFor("Title", mai)
+Address1 = LookingFor("Address 1", mai)
+Address2 = LookingFor("Address 2", mai)
+City = LookingFor("City: ", mai, 0)
+State = LookingFor("State: ", mai, 0)
+ZIP = LookingFor("Zip: ", mai, 0)
+Country = LookingFor("Country", mai)
+Phone = "'" & LookingFor("Phone", mai)
+LeadStatus = "Dormant"
+
+Dim InfoStr() As Variant
+InfoStr = Array(LeadSource, LeadClass, PartNumber, ProductDescription, InquiryDate, Company, LastName, FirstName, EmailAddress, Occupation, Address1, Address2, City, State, ZIP, Country, Phone, LeadStatus)
+DesignReuse = InfoStr
+End Function
+
+Function ChipEstimate(mai)
+
+LeadSource = "ChipEstimate"
+
+'LeadClass determine
+If LookingFor("IP Name:", mai, 1) > "" Then
+    LeadClass = "IP"
+ElseIf LookingFor("IP Category:", mai, 1) > "" Then
+    LeadClass = "IP Category"
+End If
+
+Product = LookingFor("IP Category:", mai, 1)
+    PartNumber = LookingFor("IP Name: ", mai, 0)
+        If Len(PartNumber) > 0 Then
+            PartNumber = Left(PartNumber, Len(PartNumber) - 1)
+        End If
+    ProductDescription = Product
+    
+
+InquiryDate = DateValue(mai.ReceivedTime)
+CustName = LookingFor("Name:", mai, 1)
+    FirstName = Left(CustName, InStr(CustName, " ") - 1)
+    LastName = Mid(CustName, InStr(CustName, " ") + 1, Len(CustName) - InStr(CustName, " "))
+EmailAddress = LookingFor("Email: ", mai, 0)
+Occupation = LookingFor("Title", mai)
+Address1 = ""
+Address2 = ""
+Location = LookingFor("Location", mai)
+    If CountSpaces(Location) = 0 Then
+        City = ""
+        State = ""
+        Country = Loaction
+        ZIP = ""
+    Else
+        City = Left(Location, InStr(Location, "   ") - 1)
+        State = ""
+        ZIP = ""
+        Country = Mid(Location, InStr(Location, "  ") + 3)
+    End If
+Phone = ""
+LeadStatus = "Dormant"
+Dim InfoStr() As Variant
+InfoStr = Array(LeadSource, LeadClass, PartNumber, ProductDescription, InquiryDate, Company, LastName, FirstName, EmailAddress, Occupation, Address1, Address2, City, State, ZIP, Country, Phone, LeadStatus)
+ChipEstimate = InfoStr
+
+End Function
+
+Sub testCE()
+Dim olApp As Outlook.Application
+Dim objNS As Outlook.NameSpace
+Dim DefaultFolder As Outlook.MAPIFolder
+Dim MyFolder As Outlook.MAPIFolder
+Dim body As String
+Dim xlApp As Excel.Application
+
+Set olApp = Outlook.Application
+Set objNS = olApp.GetNamespace("MAPI")
+Set DefaultFolder = objNS.GetDefaultFolder(olFolderInbox)
+Set MyFolder = DefaultFolder.Folders("test").Folders("Input")
+
+Set mai = MyFolder.Items(1)
+InfoList = ChipEstimate(mai)
+bbb = ""
+For i = LBound(InfoList) To UBound(InfoList)
+    bbb = bbb & Chr(13) & Chr(10) & InfoList(i)
+Next i
+MsgBox bbb
+End Sub
+Function CountSpaces(Str)
+SpaceLoc = InStr(Str, " ")
+If SpaceLoc = 0 Then
+    CountSpaces = 0
+Else
+    CountSpaces = 1 + CountSpaces(Mid(Str, InStr(Str, " ") + 1))
+End If
+End Function
+
+Function LookingFor(SearchString As String, MyItem, Optional Interval As Integer = 2) As String
+'Interval is used to represent the spaces between SearchString and the actual string we are looking for, usually it's 2 but sometimes it varies.
+
+body = MyItem.body
+StrStart = InStr(body, SearchString)
+If StrStart > 2 Then
+    StrStart = StrStart + Len(SearchString) + Interval '+2 because there's a ":" and " " afterwards
+    StrEnd = InStr(StrStart, body, Chr(13)) 'Chr(13) is usually the charactar after each string we are looking for.
+    LookingFor = Mid(body, StrStart, StrEnd - StrStart) '
+Else
+    LookingFor = ""
+End If
+
+End Function
+
+Sub ToExcel(bb) 'Please open the Lead Management excel file first.
+Dim xlApp As Excel.Application
+'Set xlApp = CreateObject("Excel.Application")
+'      With xlApp
+'      .Visible = True
+'      .EnableEvents = False
+'      '.UserControl = False
+'       '.DisplayAlerts = False
+'       '.AskToUpdateLinks = False
+'
+'End With
+
+LG = "Lead Management Macro.xlsm"
+
+For b = LBound(bb) To UBound(bb)
+    Workbooks(LG).Worksheets("Creating Lead").Cells(7 + b, 3).Value = bb(b) 'b starting from 0
+Next b
+
+End Sub
+Sub toDataBase(xlApp, LG)
+
+nRow = Workbooks(LG).Worksheets("Config").Range("C3").Value + 2
+
+Dim i As Integer
+Dim Config, CreatingLead, Database As String
+
+Config = "Config"
+CreatingLead = "Creating Lead"
+Database = "Database"
+
+If Worksheets(CreatingLead).Range("C6").Value = "" Then
+    Worksheets(Database).Cells(nRow, 1).Value = Worksheets(Config).Range("C2").Value
+Else
+    Worksheets(Database).Cells(nRow, 1).Value = Worksheets(CreatingLead).Cells(5 + 1, 3).Value
+End If 'if Ref# is void, create a new number, otherwise, use Ref# that is set up.
+
+For i = 2 To 19
+    Worksheets(Database).Cells(nRow, i).Value = Worksheets(CreatingLead).Cells(5 + i, 3).Value
+Next i
+
+With Worksheets(Config)
+    .Range("C2").Value = .Range("C2").Value + 1
+    .Range("C3").Value = .Range("C3").Value + 1
+End With
+
+Worksheets(CreatingLead).Range("C6:I24").ClearContents
+
+End Sub
+
+Sub Openexcel()
+' change
+  Dim xlApp As Excel.Application
+  Dim sourceWB As Excel.Workbooks
+  Dim sourceSH As Excel.Worksheets
+'change
+  Set xlApp = CreateObject("Excel.Application")
+      With xlApp
+      .Visible = True
+      .EnableEvents = False
+      '.UserControl = False
+       '.DisplayAlerts = False
+       '.AskToUpdateLinks = False
+
+End With
+
+strFile = "C:\OneDrive\Documents\Employment\Sales Operation\one time work\20161007 - Lead Generation\Lead Management Macro.xlsm"
+'change
+xlApp.Workbooks.Open FileName:=strFile, _
+    ReadOnly:=False, _
+    Editable:=True
+
+
+End Sub
